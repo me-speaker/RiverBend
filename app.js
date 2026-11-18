@@ -1,7 +1,11 @@
+import {
+  advanceGame, createGame, forecastPlan, getGame, prepareCouncil, recommendLocal, recordOffer, SAVE_KEY,
+} from "./game-engine.js";
+import { readModelSettings, recommendModel, saveModelSettings, testModelSettings } from "./browser-model.js";
+
 const el = (id) => document.getElementById(id);
 const label = { food: "粮食", wood: "木材", coin: "钱币", trust: "民望", population: "人口" };
 const jobs = { farm: ["务农", "food"], wood: ["伐木", "wood"], trade: ["经商", "coin"] };
-const saveKey = "river-council-game";
 const representativeKey = "river-council-representative";
 let configuredModel = "";
 let state,
@@ -15,9 +19,7 @@ let selected = null,
   pending = false,
   asking = false,
   forecastReady = false;
-let forecastSeq = 0,
-  councilSeq = 0,
-  timer;
+let councilSeq = 0;
 function pageBusy(value) {
   pending = value;
   if (state) renderControls();
@@ -46,30 +48,6 @@ function list(id, strings) {
     }),
   );
 }
-async function request(route, body) {
-  const res = await fetch(
-    route,
-    body === undefined
-      ? { cache: "no-store" }
-      : {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
-  );
-  let value;
-  try {
-    value = await res.json();
-  } catch {
-    throw new Error("市政服务未返回有效数据，请检查启动窗口。");
-  }
-  if (!res.ok || value.error) {
-    const error = new Error(value.error || "请求失败");
-    error.status = res.status;
-    throw error;
-  }
-  return value;
-}
 function draft() {
   return {
     game_id: state.game_id,
@@ -79,20 +57,24 @@ function draft() {
     offer: appliedOffer?.id || null,
   };
 }
+function savedGame() {
+  try {
+    return getGame(null);
+  } catch (error) {
+    if (error.status !== 404) throw error;
+    return null;
+  }
+}
 function loadGame(data, newRun = false) {
   clearTimeout(receiptTimer);
   receipt.hidden = true;
   receipt.replaceChildren();
   state = data.state;
-  if (typeof data.model_available === "boolean") modelAvailable = data.model_available;
   if (newRun) {
     let preferred = "local";
     try { preferred = sessionStorage.getItem(representativeKey); } catch {}
     el("mode").value = modelAvailable && preferred === "model" ? "model" : "local";
   }
-  try {
-    sessionStorage.setItem(saveKey, state.game_id);
-  } catch {}
   workers = { ...state.workers };
   build = null;
   offer = null;
@@ -110,7 +92,7 @@ function loadGame(data, newRun = false) {
   show("councilStatus", "");
   el("intent").value = "";
   renderState();
-  if (playing()) scheduleForecast();
+  if (playing()) refreshForecast();
   else {
     clearForecast();
     const ending = el("ending");
@@ -225,8 +207,6 @@ const terrainIcons = { town: "hall", farm: "food", wood: "wood", trade: "coin", 
 let map;
 let mapStartup;
 let forecast = null;
-let compareSeq = 0;
-let compareTimer;
 const councilPreview = document.createElement("p");
 councilPreview.className = "council-preview minor";
 el("accept").before(councilPreview);
@@ -329,10 +309,6 @@ function renderControls() {
   show("councilBasis", changed ? "议案基于先前安排，下方预估已按当前计划重新核算。" : "");
 }
 function clearForecast() {
-  ++forecastSeq;
-  ++compareSeq;
-  clearTimeout(timer);
-  clearTimeout(compareTimer);
   forecastReady = false;
   forecast = null;
   councilPreview.textContent = "";
@@ -342,58 +318,44 @@ function clearForecast() {
   el("ledger").hidden = true;
   renderControls();
 }
-function scheduleForecast() {
+function refreshForecast() {
   clearForecast();
-  const token = forecastSeq;
-  const plan = draft();
-  el("forecastMsg").className = "status busy";
-  show("forecastMsg", "正在核算…");
-  timer = setTimeout(async () => {
-    try {
-      const { forecast: result } = await request("/api/forecast", plan);
-      if (token !== forecastSeq) return;
-      forecastReady = true;
-      forecast = result;
-      show("forecastMsg", result.status === "playing" ? "" : result.result);
-      el("forecastMsg").className = "status";
-      el("pills").innerHTML = Object.keys(state.resources).map(key => {
-        const delta = result.delta[key];
-        const text = delta > 0 ? "+" + delta : delta < 0 ? "−" + Math.abs(delta) : "0";
-        return `<div class="pill ${key}" title="季末${label[key]} ${result.resources[key]}"><small>${label[key]}</small>
-          <b class="${delta > 0 ? "pos" : delta < 0 ? "neg" : "neutral"}">${text}</b></div>`;
-      }).join("");
-      list("events", [...result.events, "季末库存 · " + resourceLine(result)]);
-      el("ledger").hidden = false;
-    } catch (error) {
-      if (token !== forecastSeq) return;
-      show("forecastMsg", error.message);
-      el("forecastMsg").className = "status err";
-    }
-    renderControls();
-    if (offer && el("councilDialog").open) compareOffer();
-  }, 75);
+  try {
+    const { forecast: result } = forecastPlan(draft());
+    forecastReady = true;
+    forecast = result;
+    show("forecastMsg", result.status === "playing" ? "" : result.result);
+    el("forecastMsg").className = "status";
+    el("pills").innerHTML = Object.keys(state.resources).map(key => {
+      const delta = result.delta[key];
+      const text = delta > 0 ? "+" + delta : delta < 0 ? "−" + Math.abs(delta) : "0";
+      return `<div class="pill ${key}" title="季末${label[key]} ${result.resources[key]}"><small>${label[key]}</small>
+        <b class="${delta > 0 ? "pos" : delta < 0 ? "neg" : "neutral"}">${text}</b></div>`;
+    }).join("");
+    list("events", [...result.events, "季末库存 · " + resourceLine(result)]);
+    el("ledger").hidden = false;
+  } catch (error) {
+    show("forecastMsg", error.message);
+    el("forecastMsg").className = "status err";
+  }
+  renderControls();
+  if (offer && el("councilDialog").open) compareOffer();
 }
 function resourceLine(result) {
   return ["food", "wood", "coin", "trust"].map(k => result.resources[k] + " " + (units[k] || label[k])).join("，");
 }
 function compareOffer() {
-  clearTimeout(compareTimer);
-  const token = ++compareSeq;
   const plan = draft();
-  const option = offer.id;
-  const baseline = forecast;
-  councilPreview.textContent = "正在对照签约前后的季末库存…";
-  compareTimer = setTimeout(async () => {
-    const results = await Promise.allSettled([null, option].map(async id => {
-      if (id === plan.offer && baseline) return baseline;
-      return (await request("/api/forecast", { ...plan, offer: id })).forecast;
-    }));
-    if (token !== compareSeq) return;
-    const lines = results.map((result, i) => (i ? "签约" : "不签") + " · " +
-      (result.status === "fulfilled" ? resourceLine(result.value) : result.reason.message));
-    councilPreview.replaceChildren(document.createTextNode("本季末库存"), document.createElement("br"),
-      document.createTextNode(lines[0]), document.createElement("br"), document.createTextNode(lines[1]));
-  }, 60);
+  const [unsigned, signed] = [null, offer.id].map(id => {
+    try {
+      const result = id === plan.offer && forecast ? forecast : forecastPlan({ ...plan, offer: id }).forecast;
+      return resourceLine(result);
+    } catch (error) {
+      return error.message;
+    }
+  });
+  councilPreview.replaceChildren(document.createTextNode("本季末库存"), document.createElement("br"),
+    document.createTextNode("不签 · " + unsigned), document.createElement("br"), document.createTextNode("签约 · " + signed));
 }
 
 el("workers").addEventListener("click", event => {
@@ -401,7 +363,7 @@ el("workers").addEventListener("click", event => {
   if (!b || b.disabled || !playing() || pending) return;
   workers[b.dataset.job] += Number(b.dataset.change);
   b.parentElement.querySelector("output").textContent = workers[b.dataset.job];
-  scheduleForecast();
+  refreshForecast();
 });
 el("tileSelect").addEventListener("change", event => selectTile(event.target.value));
 el("buildButton").onclick = () => {
@@ -410,17 +372,17 @@ el("buildButton").onclick = () => {
   drawMap();
   renderTile();
   drawWorkers();
-  scheduleForecast();
+  refreshForecast();
 };
 el("accept").onclick = () => {
   if (pending || !playing() || !offer) return;
   appliedOffer = appliedOffer?.id === offer.id ? null : offer;
-  scheduleForecast();
+  refreshForecast();
 };
 el("withdraw").onclick = () => {
   if (pending || !playing()) return;
   appliedOffer = null;
-  scheduleForecast();
+  refreshForecast();
 };
 el("ask").onclick = async () => {
   if (!playing() || pending || asking) return;
@@ -431,11 +393,20 @@ el("ask").onclick = async () => {
   el("councilStatus").className = "notice busy";
   show("councilStatus", "代表正在商议，此时仍可回到地图调整安排。");
   try {
-    const reply = await request("/api/council", {
-      game_id: plan.game_id, revision: plan.revision, workers: plan.workers, build: plan.build,
-      intent: el("intent").value.trim(), mode: el("mode").value,
-    });
+    const { city, options } = prepareCouncil(plan);
+    const intent = el("intent").value.trim();
+    let reply;
+    if (el("mode").value === "model") {
+      try {
+        reply = await recommendModel(city, options, intent, plan.workers, plan.build);
+      } catch (error) {
+        reply = { ...recommendLocal(city, options, intent, plan.build), message: error.message + " 已采用本地代表。" };
+      }
+    } else {
+      reply = recommendLocal(city, options, intent, plan.build);
+    }
     if (token !== councilSeq) return;
+    reply = recordOffer(plan, reply);
     offer = reply.offer;
     offerPlan = plan;
     el("proposal").hidden = false;
@@ -473,24 +444,20 @@ function showSettlement(data) {
   receipt.replaceChildren(season, outcome);
   receiptTimer = setTimeout(() => { receipt.hidden = true; }, 6000);
 }
-el("advance").onclick = async () => {
-  if (!playing() || !forecastReady || pending) return;
+el("advance").onclick = event => {
+  if (event.detail > 1 || !playing() || !forecastReady || pending) return;
   const plan = draft();
   pageBusy(true);
   ++councilSeq;
   asking = false;
   show("councilStatus", "");
   try {
-    showSettlement(await request("/api/advance", plan));
+    showSettlement(advanceGame(plan));
   } catch (error) {
-    // The previous POST might have committed even if its response was lost.
-    try {
-      const latest = await request("/api/state?game_id=" + encodeURIComponent(plan.game_id));
-      if (latest.state.revision !== plan.revision) {
-        showSettlement(latest);
-        return;
-      }
-    } catch { /* Keep the draft available for a retry. */ }
+    if (error.status === 409 || error.status === 404) {
+      const current = savedGame();
+      if (current?.state) loadGame(current);
+    }
     el("forecastMsg").className = "status err";
     show("forecastMsg", error.message);
   } finally {
@@ -526,9 +493,14 @@ function setNav(id) {
 
 let settingsSnapshot;
 let settingsView = 0;
-let saveInFlight;
+function syncModelMode(snapshot) {
+  modelAvailable = snapshot.configured;
+  configuredModel = snapshot.config.endpoint ? snapshot.config.model : "";
+  renderModelMode();
+}
 function renderModelMode() {
-  show("modelHint", modelAvailable ? ["已配置", configuredModel].filter(Boolean).join(" · ") : "尚未配置大模型");
+  show("modelHint", modelAvailable ? "已配置 · " + configuredModel :
+    configuredModel ? "重新输入 API 密钥以连接 " + configuredModel : "尚未配置大模型");
   el("mode").querySelector("[value=model]").disabled = !modelAvailable;
   if (!modelAvailable) el("mode").value = "local";
 }
@@ -549,7 +521,7 @@ function updateKeyField() {
   el("modelKeyField").hidden = !needsKey;
   el("modelKey").disabled = !needsKey;
   el("modelKey").required = needsKey && !canReuse;
-  el("modelKey").placeholder = canReuse ? "已保存，留空沿用现有密钥" : "输入服务商提供的密钥";
+  el("modelKey").placeholder = canReuse ? "留空可沿用当前页面的密钥" : "输入服务商提供的密钥";
 }
 function showPreset(config) {
   el("modelEndpoint").value = config.endpoint;
@@ -562,43 +534,40 @@ function showPreset(config) {
 }
 function showSettings(snapshot) {
   settingsSnapshot = snapshot;
-  modelAvailable = snapshot.configured;
-  configuredModel = modelAvailable ? snapshot.config.model : "";
-  renderModelMode();
+  syncModelMode(snapshot);
   el("configState").classList.toggle("configured", modelAvailable);
-  show("configState", modelAvailable ? "已配置" : "待配置");
+  show("configState", modelAvailable ? "已配置" : configuredModel && snapshot.config.endpoint ? "待输入密钥" : "待配置");
   const presets = Object.entries(snapshot.presets).map(([id, entry]) => new Option(entry.label, id));
   el("modelPreset").replaceChildren(...presets);
   el("modelPreset").value = snapshot.config.provider_id;
   showPreset(snapshot.config);
 }
-async function openModelSettings() {
+function openModelSettings() {
   const dialog = el("settingsDialog");
   if (dialog.open) return;
-  const view = ++settingsView;
+  ++settingsView;
   dialog.showModal();
   dialog.scrollTop = 0;
   el("configFields").disabled = true;
   el("modelKey").value = "";
-  show("configState", "读取中");
   el("configState").classList.remove("configured");
   configMessage("");
   try {
-    if (saveInFlight) await saveInFlight.catch(() => {});
-    const snapshot = await request("/api/model-config");
-    if (view !== settingsView) return;
-    showSettings(snapshot);
+    showSettings(readModelSettings());
     el("configFields").disabled = false;
   } catch (error) {
-    if (view !== settingsView) return;
     show("configState", "读取失败");
-    configMessage(error.status === 404 ? "请用 Play.cmd 启动新版，或打开新版游戏地址。" : error.message, "error");
+    configMessage(error.message, "error");
   }
 }
 el("settingsDialog").addEventListener("close", () => {
   ++settingsView;
   el("modelKey").value = "";
-  if (location.hash === "#model-settings") history.replaceState(null, "", location.pathname + location.search);
+  if (location.hash === "#model-settings") {
+    const url = new URL(location.href);
+    url.hash = "";
+    try { history.replaceState(null, "", url); } catch { /* Some browsers restrict history on file URLs. */ }
+  }
 });
 el("modelPreset").onchange = () => {
   const id = el("modelPreset").value;
@@ -623,19 +592,13 @@ async function submitModelSettings(save) {
   configMessage(save ? "正在保存配置…" : "正在请求模型回复…");
   try {
     if (save) {
-      saveInFlight = request("/api/model-config", data);
-      const snapshot = await saveInFlight;
-      modelAvailable = snapshot.configured;
-      configuredModel = snapshot.config.model;
-      renderModelMode();
+      const snapshot = saveModelSettings(data);
+      showSettings(snapshot);
       el("mode").value = "model";
       rememberMode();
-      if (view === settingsView) {
-        showSettings(snapshot);
-        configMessage("已保存并启用 " + configuredModel + "。下次听取议案时生效。", "ok");
-      }
+      configMessage("已启用 " + configuredModel + "。下次听取议案时生效。", "ok");
     } else {
-      const result = await request("/api/model-config/test", data);
+      const result = await testModelSettings(data);
       if (view === settingsView) {
         configMessage("连接成功 · " + result.model + " · " + Number(result.seconds).toFixed(2) + " 秒", "ok");
       }
@@ -643,7 +606,6 @@ async function submitModelSettings(save) {
   } catch (error) {
     if (view === settingsView) configMessage(error.message, "error");
   } finally {
-    if (save) saveInFlight = null;
     if (view === settingsView) fields.disabled = false;
   }
 }
@@ -684,7 +646,7 @@ async function restart() {
   if (pending || (playing() && !confirm("重新从第一年初春开始经营？"))) return;
   pageBusy(true);
   try {
-    loadGame(await request("/api/new", {}), true);
+    loadGame(createGame(), true);
     if (map) map.resetView();
     else await (mapStartup ??= initMap());
     el("settingsDialog").close();
@@ -725,25 +687,23 @@ async function initMap() {
   }
 }
 async function start() {
-  let saved;
-  try { saved = sessionStorage.getItem(saveKey); } catch {}
   try {
-    let data;
-    if (saved) {
-      try {
-        data = await request("/api/state?game_id=" + encodeURIComponent(saved));
-      } catch (error) {
-        if (error.status !== 404) throw error;
-      }
-    }
-    loadGame(data || await request("/api/new", {}), true);
+    syncModelMode(readModelSettings());
+    loadGame(savedGame() || createGame(), true);
     await (mapStartup ??= initMap());
   } catch (error) {
     el("loading").hidden = false;
     el("loading").className = "fatal";
-    show("loading", error.message + "　请检查启动窗口，刷新页面重试。");
+    show("loading", error.message + "　请重新打开游戏。");
   }
 }
+window.addEventListener("storage", event => {
+  if (event.key !== SAVE_KEY || !state) return;
+  const latest = savedGame();
+  if (latest && (latest.state.game_id !== state.game_id || latest.state.revision !== state.revision)) {
+    loadGame(latest);
+  }
+});
 start();
 function openLinkedSettings() {
   if (location.hash === "#model-settings") openModelSettings();
