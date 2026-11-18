@@ -1,0 +1,7 @@
+{
+  "minimax": {"label": "MiniMax（Anthropic 兼容）", "protocol": "anthropic", "endpoint": "https://api.minimaxi.com/anthropic/v1/messages", "model": "MiniMax-M3", "auth_type": "bearer", "token_parameter": "max_tokens", "thinking": false},
+  "openai": {"label": "OpenAI（Chat Completions）", "protocol": "openai", "endpoint": "https://api.openai.com/v1/chat/completions", "model": "", "auth_type": "bearer", "token_parameter": "max_completion_tokens", "thinking": false, "system_role": "developer"},
+  "openai_compatible": {"label": "其他 OpenAI 兼容接口", "protocol": "openai", "endpoint": "", "model": "", "auth_type": "bearer", "token_parameter": "max_tokens", "thinking": false},
+  "anthropic": {"label": "Anthropic（Messages）", "protocol": "anthropic", "endpoint": "https://api.anthropic.com/v1/messages", "model": "", "auth_type": "x-api-key", "token_parameter": "max_tokens", "thinking": false},
+  "anthropic_compatible": {"label": "其他 Anthropic 兼容接口", "protocol": "anthropic", "endpoint": "", "model": "", "auth_type": "bearer", "token_parameter": "max_tokens", "thinking": false}
+}
