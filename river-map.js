@@ -381,6 +381,29 @@ function waterSpot(cx,cz) {
   }
   return best;
 }
+function warehouseYard(p,y,tile,rng) {
+  const figures = [["zhang",-.29,"#4c846e"],["li",.40,"#bc794d"]];
+  const house = [.17,-.23];
+  cottage(p,house[0],y,house[1],1.04,"#986656",true);
+  box(p,.13,y+.015,.33,.83,.03,.56,"#d7c9a7");
+  logs(p,.56,y,.04,.67);
+  logs(p,-.31,y,-.15,.62);
+  roundTree(p,.59,y,-.27,.60,rng,false,false);
+  if (tile.createdSite) flag(p,.56,y,.44,.44,"#e8b963");
+  for (const [id,x,coat] of figures) {
+    if (tile.occupant === id) {
+      box(p,house[0],y+.17,house[1]+.423,.126,.20,.021,"#efbd69");
+      flag(p,house[0]+.23,y+.60,house[1]-.09,.28,coat);
+      continue;
+    }
+    const z=.47;
+    for (const foot of [-.036,.036]) box(p,x+foot,y+.049,z,.042,.098,.058,"#654f43");
+    taper(p,x,y+.155,z,.056,.084,.151,8,coat);
+    rock(p,x,y+.265,z,.064,.064,.063,"#e4ab83");
+    taper(p,x,y+.308,z,.034,.066,.049,8,"#4c433a");
+    if (tile.worked?.includes(id)) box(p,x,y+.132,z+.077,.15,.041,.045,"#b68755");
+  }
+}
 function pieceGeometry(tile,season) {
   const p=new Piece(),[cx,cz]=tileCenter(tile);
   const rng=randomAt(42219+tile.q*3571+tile.r*8477), winter=season==="严冬",autumn=season==="金秋";
@@ -394,7 +417,9 @@ function pieceGeometry(tile,season) {
     const v=shore(cx+x,cz+z);
     rock(p,x,(v<0?WATER:y)+.038*s,z,s*.12,s*.11,s*.15,"#b3b298",rng()*4);
   };
-  if(tile.kind==="town") {
+  if(tile.kind==="warehouse-demo") {
+    warehouseYard(p,y,tile,rng);
+  } else if(tile.kind==="town") {
     hall(p,y);
     tree(-.48,.28,.53,false);
   } else if(tile.kind==="wood") {
@@ -543,7 +568,7 @@ export function createRiverMap(container,{frame:viewport=container,onSelect=()=>
     viewport.style.setProperty("--north-angle",Math.atan2(scratch.x,scratch.y)+"rad");
     const bounds=new THREE.Box2();
     for(const {mesh,tile} of pieces.values()) {
-      const high=grassHeight(tile)+(tile.kind==="hill"?.76:.50);
+      const high=grassHeight(tile)+(tile.kind==="warehouse-demo"?.92:tile.kind==="hill"?.76:.50);
       for(const [x,z] of corners)for(const elevation of [BED,high]) {
         scratch.set(mesh.position.x+x,elevation,mesh.position.z+z).applyMatrix4(camera.matrixWorldInverse);
         bounds.expandByPoint(new THREE.Vector2(scratch.x,scratch.y));
@@ -651,7 +676,7 @@ export function createRiverMap(container,{frame:viewport=container,onSelect=()=>
         scene.remove(piece.mesh);piece.mesh.geometry.dispose();pieces.delete(id);changed=true;
       }
       for(const tile of tiles) {
-        const signature=[season,tile.kind,tile.improved,tile.q,tile.r].join("/");
+        const signature=[season,tile.kind,tile.improved,tile.q,tile.r,tile.occupant,tile.createdSite,tile.worked?.join(",")].join("/");
         let piece=pieces.get(tile.id);
         if(!piece) {
           const mesh=new THREE.Mesh(pieceGeometry(tile,season),mat);

@@ -1,4 +1,5 @@
 {
+  "minimax_browser": {"label": "MiniMax（浏览器直连）", "protocol": "openai", "endpoint": "https://api.minimaxi.com/v1/chat/completions", "model": "MiniMax-M3", "auth_type": "bearer", "token_parameter": "max_tokens", "thinking": false},
   "minimax": {"label": "MiniMax（Anthropic 兼容）", "protocol": "anthropic", "endpoint": "https://api.minimaxi.com/anthropic/v1/messages", "model": "MiniMax-M3", "auth_type": "bearer", "token_parameter": "max_tokens", "thinking": false},
   "openai": {"label": "OpenAI（Chat Completions）", "protocol": "openai", "endpoint": "https://api.openai.com/v1/chat/completions", "model": "", "auth_type": "bearer", "token_parameter": "max_completion_tokens", "thinking": false, "system_role": "developer"},
   "openai_compatible": {"label": "其他 OpenAI 兼容接口", "protocol": "openai", "endpoint": "", "model": "", "auth_type": "bearer", "token_parameter": "max_tokens", "thinking": false},

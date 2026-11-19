@@ -10,6 +10,10 @@ const MINIMAX_ENDPOINTS = new Set([
   "https://api.minimax.cn/anthropic/v1/messages",
   "https://api.minimax.io/anthropic/v1/messages",
 ]);
+const MINIMAX_BROWSER_ENDPOINTS = new Set([
+  "https://api.minimaxi.com/v1/chat/completions",
+  "https://api.minimax.io/v1/chat/completions",
+]);
 const FORM_FIELDS = new Set(["provider_id", "endpoint", "model", "auth_type", "output_mode", "api_key"]);
 const CITY_FIELDS = [
   "turn", "max_turns", "season", "weather", "goal", "population", "resources",
@@ -68,6 +72,9 @@ function validateConfig(config) {
   }
   if (config.provider_id === "minimax" && !MINIMAX_ENDPOINTS.has(endpoint)) {
     throw new ModelError("MiniMax 预设需要使用官方接口地址。");
+  }
+  if (config.provider_id === "minimax_browser" && !MINIMAX_BROWSER_ENDPOINTS.has(endpoint)) {
+    throw new ModelError("MiniMax 浏览器预设需要使用官方 Chat Completions 地址。");
   }
   if (typeof config.model !== "string" || !config.model.trim() ||
       config.model.length > 128 || /[\x00-\x1f\x7f]/.test(config.model)) {
@@ -143,7 +150,7 @@ export function saveModelSettings(data) {
 
 function makePayload(config, system, content, maxTokens, schema) {
   const useTools = schema && config.output_mode === "tools";
-  const tool = { name: TOOL_NAME, description: "提交议案编号和居民的简短理由。" };
+  const tool = { name: TOOL_NAME, description: "按给定字段提交结构化结果。" };
   if (schema && !useTools) {
     system += "\n只返回符合此结构的 JSON 对象，不用 Markdown。\n" + JSON.stringify(schema);
   }
@@ -158,6 +165,10 @@ function makePayload(config, system, content, maxTokens, schema) {
   return {
     model: config.model, messages: [{ role: config.system_role, content: system }, user],
     [config.token_parameter]: maxTokens, stream: false,
+    ...(config.provider_id === "minimax_browser" && config.model === "MiniMax-M3" ?
+      { thinking: { type: "disabled" }, reasoning_split: true } : {}),
+    ...(config.provider_id === "minimax_browser" && config.model === "MiniMax-M3.1-Flash" ?
+      { reasoning_effort: "low" } : {}),
     ...(useTools ? { tools: [{ type: "function", function: { ...tool, parameters: schema } }], tool_choice: "auto" } : {}),
   };
 }
@@ -258,6 +269,21 @@ export async function testModelSettings(data) {
   const { config, key } = draftSettings(data);
   const result = await complete(config, key, "请回复 OK。", "连接测试", 256);
   return { ok: true, model: config.model, seconds: result.seconds };
+}
+
+export async function requestStructuredModel(system, context, schema) {
+  const config = savedConfig;
+  const key = apiKey;
+  if (!config || (config.auth_type !== "none" && !key)) throw new ModelError("大模型尚未配置。");
+  const { reply, seconds } = await complete(config, key, system, JSON.stringify(context), 1600, schema);
+  const raw = typeof reply === "string" ? reply.trim().replace(/^```(?:json)?\s*([\s\S]*?)\s*```$/i, "$1") : JSON.stringify(reply);
+  try {
+    const value = JSON.parse(raw);
+    if (!value || typeof value !== "object" || Array.isArray(value) || (key && raw.includes(key))) throw new Error();
+    return { value, seconds, model: config.model };
+  } catch {
+    throw new ModelError("模型未返回可校验的草案。");
+  }
 }
 
 export async function recommendModel(city, options, intent, workers, build) {

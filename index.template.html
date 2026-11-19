@@ -32,7 +32,9 @@
 <symbol id="ico-river" viewBox="0 0 40 40"><g stroke-width="1.65" stroke-linejoin="round" stroke-linecap="round"><g fill="none" stroke="#4c9eaf" stroke-width="3"><path d="M3 14q5-4 10 0t10 0t11 0M7 22q5-4 10 0t10 0t10 0M3 30q5-4 10 0t10 0"/></g></g></symbol>
 <symbol id="ico-brand" viewBox="0 0 40 40"><g stroke-width="1.65" stroke-linejoin="round" stroke-linecap="round"><g stroke="#514865" stroke-width="1.6" stroke-linejoin="round"><path d="M5 5c9 2 19 1 30 0v18c0 7-6 12-15 16C10 35 5 30 5 24Z" fill="#f1e9ff"/><path d="M9 8v16c0 5 6 9 11 12 6-3 11-7 11-12V8c-6 1-16 1-22 0Z" fill="#8b78b0" stroke="none"/><path d="m11 21 8-9 9 9v9l-8 4-9-5z" fill="#f7d4a2"/><path d="m9 20 10-11 12 10-3 2-9-8-8 10z" fill="#f4ab7b"/><path fill="#79638a" d="M17 30v-6q2-4 5-1v8l-2 1z"/><path d="M19 10V3l7 1-7 3" fill="#9cc8a1"/></g></g></symbol>
 <symbol id="ico-scroll" viewBox="0 0 40 40"><g stroke-width="1.65" stroke-linejoin="round" stroke-linecap="round"><g stroke="#8e714d"><path fill="#d8ad73" d="m6 13 5-6 20 3c4 1 4 8 1 8L13 15z"/><path fill="#ffdfa0" d="M7 7c8-4 10 2 9 7l-1 11 14 4 2-13c1-6 5-7 6-5-1-2-3-3-5-3L11 5Q8 5 7 7z"/><path fill="#e5bb84" d="M8 26c0 3 2 5 6 6l16 3c-3-2-3-6 1-8l-16-3c-3 3-6 3-7 2z"/><path fill="none" stroke-width="1.6" d="m19 13 9 2m-10 3 7 1.4"/><circle fill="#a68abc" cx="25" cy="24" r="4.2"/></g></g></symbol></defs></svg>
-<main class="shell"><p id="loading" role="status">正在展开河湾地图…</p><div id="game" hidden>
+<main id="warehouseGame" hidden></main>
+<main id="reliefGame" hidden></main>
+<main class="shell" id="seasonGame" hidden><p id="loading" role="status">正在展开河湾地图…</p><div id="game" hidden>
 <div class="hud-top">
 <header class="mast">
  <div class="brand"><svg class="art-icon" aria-hidden="true"><use href="#ico-brand"/></svg><div><strong>河湾议会</strong><span>RIVERBEND COUNCIL</span></div></div>
@@ -40,7 +42,7 @@
  <button id="overviewButton" class="nav-item active" aria-current="page"><svg class="ui-icon" aria-hidden="true"><use href="#ui-map"/></svg>领地总览</button>
  <button id="councilButton" class="nav-item"><svg class="ui-icon" aria-hidden="true"><use href="#ui-council"/></svg>议事厅</button>
  <button id="historyButton" class="nav-item"><svg class="ui-icon" aria-hidden="true"><use href="#ui-book"/></svg>城镇纪事</button></nav>
- <div class="utilities"><button class="icon-button" id="helpButton" aria-label="玩法说明" title="玩法说明"><svg class="ui-icon" aria-hidden="true"><use href="#ui-help"/></svg></button><button class="icon-button" id="settingsButton" aria-label="游戏设置" title="游戏设置"><svg class="ui-icon" aria-hidden="true"><use href="#ui-settings"/></svg></button></div>
+ <div class="utilities"><a class="soft-button relief-mode-link" href="#relief">灾后七日</a><button class="icon-button" id="helpButton" aria-label="玩法说明" title="玩法说明"><svg class="ui-icon" aria-hidden="true"><use href="#ui-help"/></svg></button><button class="icon-button" id="settingsButton" aria-label="游戏设置" title="游戏设置"><svg class="ui-icon" aria-hidden="true"><use href="#ui-settings"/></svg></button></div>
 </header>
 <div class="hud-summary">
 <section class="season-strip" aria-label="当前时节">
@@ -95,7 +97,7 @@
  <div class="dialog-head"><h2 id="settingsTitle"><svg class="ui-icon" aria-hidden="true"><use href="#ui-settings"/></svg>游戏设置</h2><button type="button" class="icon-button close-dialog" data-close="settingsDialog" aria-label="关闭设置"><svg class="ui-icon" aria-hidden="true"><use href="#ui-close"/></svg></button></div>
  <div class="dialog-body">
   <div class="model-config-heading"><h3>大模型配置</h3><span id="configState"></span></div>
-  <p class="model-usage">浏览器会把游戏局势、经营打算和候选契约发给你填写的模型接口。接口须允许网页跨域请求。</p>
+  <p class="model-usage" id="modelUsage"></p>
   <form id="modelForm" autocomplete="off">
    <fieldset id="configFields" disabled>
     <label for="modelPreset">服务商 / 接口协议</label>

@@ -1,3 +1,5 @@
+import { mountRelief } from "./relief-ui.js";
+import { mountWarehouse } from "./warehouse-ui.js";
 import {
   advanceGame, createGame, forecastPlan, getGame, prepareCouncil, recommendLocal, recordOffer, SAVE_KEY, TRADE_TRUST,
 } from "./game-engine.js";
@@ -571,6 +573,8 @@ function openModelSettings() {
   ++settingsView;
   dialog.showModal();
   dialog.scrollTop = 0;
+  show("modelUsage", selectedMode === "warehouse" ? "浏览器会把现场信息、提案和澄清答复发给指定的模型接口。接口须允许网页跨域请求。" :
+    "浏览器会把游戏局势和议案发给指定的模型接口。接口须允许网页跨域请求。");
   el("configFields").disabled = true;
   el("modelKey").value = "";
   el("configState").classList.remove("configured");
@@ -586,9 +590,11 @@ function openModelSettings() {
 el("settingsDialog").addEventListener("close", () => {
   ++settingsView;
   el("modelKey").value = "";
+  relief?.syncModel();
+  warehouse?.syncModel();
   if (location.hash === "#model-settings") {
     const url = new URL(location.href);
-    url.hash = "";
+    url.hash = selectedMode === "warehouse" ? "" : selectedMode;
     try { history.replaceState(null, "", url); } catch { /* Some browsers restrict history on file URLs. */ }
   }
 });
@@ -617,9 +623,10 @@ async function submitModelSettings(save) {
     if (save) {
       const snapshot = saveModelSettings(data);
       showSettings(snapshot);
+      warehouse?.syncModel();
       el("mode").value = "model";
       rememberMode();
-      configMessage("已启用 " + configuredModel + "。下次听取议案时生效。", "ok");
+      configMessage("已启用 " + configuredModel + (selectedMode === "warehouse" ? "。下次编译规则时生效。" : "。下次审议时生效。"), "ok");
     } else {
       const result = await testModelSettings(data);
       if (view === settingsView) {
@@ -743,9 +750,30 @@ window.addEventListener("storage", event => {
     loadGame(latest);
   }
 });
-start();
-function openLinkedSettings() {
+let relief, warehouse, seasonsStarted = false, selectedMode;
+function showMode() {
+  const hash = location.hash;
+  const mode = hash === "#seasons" ? "seasons" : hash === "#relief" ? "relief" :
+    hash === "#model-settings" ? selectedMode ?? "warehouse" : "warehouse";
+  if (mode !== selectedMode) {
+    selectedMode = mode;
+    document.body.dataset.mode = mode;
+    el("seasonGame").hidden = mode !== "seasons";
+    el("reliefGame").hidden = mode !== "relief";
+    el("warehouseGame").hidden = mode !== "warehouse";
+    if (mode === "warehouse") {
+      warehouse ??= mountWarehouse(el("warehouseGame"), openModelSettings);
+      warehouse.open();
+    } else if (mode === "relief") {
+      window.scrollTo(0, 0);
+      relief ??= mountRelief(el("reliefGame"), openModelSettings);
+      relief.open();
+    } else if (!seasonsStarted) {
+      seasonsStarted = true;
+      void start();
+    }
+  }
   if (location.hash === "#model-settings") openModelSettings();
 }
-window.addEventListener("hashchange", openLinkedSettings);
-openLinkedSettings();
+window.addEventListener("hashchange", showMode);
+showMode();
