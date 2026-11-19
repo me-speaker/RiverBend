@@ -32,51 +32,65 @@
 <symbol id="ico-river" viewBox="0 0 40 40"><g stroke-width="1.65" stroke-linejoin="round" stroke-linecap="round"><g fill="none" stroke="#4c9eaf" stroke-width="3"><path d="M3 14q5-4 10 0t10 0t11 0M7 22q5-4 10 0t10 0t10 0M3 30q5-4 10 0t10 0"/></g></g></symbol>
 <symbol id="ico-brand" viewBox="0 0 40 40"><g stroke-width="1.65" stroke-linejoin="round" stroke-linecap="round"><g stroke="#514865" stroke-width="1.6" stroke-linejoin="round"><path d="M5 5c9 2 19 1 30 0v18c0 7-6 12-15 16C10 35 5 30 5 24Z" fill="#f1e9ff"/><path d="M9 8v16c0 5 6 9 11 12 6-3 11-7 11-12V8c-6 1-16 1-22 0Z" fill="#8b78b0" stroke="none"/><path d="m11 21 8-9 9 9v9l-8 4-9-5z" fill="#f7d4a2"/><path d="m9 20 10-11 12 10-3 2-9-8-8 10z" fill="#f4ab7b"/><path fill="#79638a" d="M17 30v-6q2-4 5-1v8l-2 1z"/><path d="M19 10V3l7 1-7 3" fill="#9cc8a1"/></g></g></symbol>
 <symbol id="ico-scroll" viewBox="0 0 40 40"><g stroke-width="1.65" stroke-linejoin="round" stroke-linecap="round"><g stroke="#8e714d"><path fill="#d8ad73" d="m6 13 5-6 20 3c4 1 4 8 1 8L13 15z"/><path fill="#ffdfa0" d="M7 7c8-4 10 2 9 7l-1 11 14 4 2-13c1-6 5-7 6-5-1-2-3-3-5-3L11 5Q8 5 7 7z"/><path fill="#e5bb84" d="M8 26c0 3 2 5 6 6l16 3c-3-2-3-6 1-8l-16-3c-3 3-6 3-7 2z"/><path fill="none" stroke-width="1.6" d="m19 13 9 2m-10 3 7 1.4"/><circle fill="#a68abc" cx="25" cy="24" r="4.2"/></g></g></symbol></defs></svg>
-<header class="mast"><div class="mast-inner">
+<main class="shell"><p id="loading" role="status">正在展开河湾地图…</p><div id="game" hidden>
+<div class="hud-top">
+<header class="mast">
  <div class="brand"><svg class="art-icon" aria-hidden="true"><use href="#ico-brand"/></svg><div><strong>河湾议会</strong><span>RIVERBEND COUNCIL</span></div></div>
  <nav class="main-nav" aria-label="游戏导航">
  <button id="overviewButton" class="nav-item active" aria-current="page"><svg class="ui-icon" aria-hidden="true"><use href="#ui-map"/></svg>领地总览</button>
  <button id="councilButton" class="nav-item"><svg class="ui-icon" aria-hidden="true"><use href="#ui-council"/></svg>议事厅</button>
  <button id="historyButton" class="nav-item"><svg class="ui-icon" aria-hidden="true"><use href="#ui-book"/></svg>城镇纪事</button></nav>
  <div class="utilities"><button class="icon-button" id="helpButton" aria-label="玩法说明" title="玩法说明"><svg class="ui-icon" aria-hidden="true"><use href="#ui-help"/></svg></button><button class="icon-button" id="settingsButton" aria-label="游戏设置" title="游戏设置"><svg class="ui-icon" aria-hidden="true"><use href="#ui-settings"/></svg></button></div>
-</div></header>
-<main class="shell"><p id="loading" role="status">正在展开河湾地图…</p><div id="game" hidden>
-<div id="ending" role="status"></div>
+</header>
+<div class="hud-summary">
 <section class="season-strip" aria-label="当前时节">
  <div><div class="season-heading"><h1 id="season">第一年 · 初春</h1><span class="season-chip" id="turn"></span></div><p class="weather"><svg class="ui-icon" aria-hidden="true"><use href="#ui-leaf"/></svg><span id="weather"></span></p></div>
  <div class="calendar" aria-label="八季建镇进度"><div class="calendar-label"><span><svg class="ui-icon" aria-hidden="true"><use href="#ui-flag"/></svg>建镇进度</span><span>共 8 季</span></div><div id="seasonSteps" class="season-steps"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
 </section>
 <div id="resources" class="resource-strip" aria-label="聚落库存与居民"></div>
-<div class="dashboard">
-<div class="map-column">
- <section class="panel territory"><header class="panel-title"><h2><span class="title-icon map-ink"><svg class="ui-icon" aria-hidden="true"><use href="#ui-map"/></svg></span>河湾领地</h2><span class="build-count"><i></i><span id="built"></span></span></header>
+</div></div>
  <div class="map-stage">
  <svg class="contours" viewBox="0 0 800 440" preserveAspectRatio="none" aria-hidden="true"><defs><pattern id="dots" width="18" height="18" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r=".85" fill="#759d91" opacity=".29"/></pattern></defs><rect width="800" height="440" fill="url(#dots)"/><g fill="none" stroke="#84b6ac" stroke-width="1.2" opacity=".34"><path transform="translate(0 0)" d="M565 -80c12 49 1 79 50 99s91-8 115 32 83 6 110 75M-100 188c102-42 112 25 103 78s62 47 61 97 56 69 113 74M625 475c0-42 41-61 75-54s69-24 78-61 53-38 75-35"/><path transform="translate(9 8)" d="M565 -80c12 49 1 79 50 99s91-8 115 32 83 6 110 75M-100 188c102-42 112 25 103 78s62 47 61 97 56 69 113 74M625 475c0-42 41-61 75-54s69-24 78-61 53-38 75-35"/><path transform="translate(18 16)" d="M565 -80c12 49 1 79 50 99s91-8 115 32 83 6 110 75M-100 188c102-42 112 25 103 78s62 47 61 97 56 69 113 74M625 475c0-42 41-61 75-54s69-24 78-61 53-38 75-35"/><path transform="translate(27 24)" d="M565 -80c12 49 1 79 50 99s91-8 115 32 83 6 110 75M-100 188c102-42 112 25 103 78s62 47 61 97 56 69 113 74M625 475c0-42 41-61 75-54s69-24 78-61 53-38 75-35"/><path transform="translate(36 32)" d="M565 -80c12 49 1 79 50 99s91-8 115 32 83 6 110 75M-100 188c102-42 112 25 103 78s62 47 61 97 56 69 113 74M625 475c0-42 41-61 75-54s69-24 78-61 53-38 75-35"/></g></svg>
  <div id="map" aria-label="河湾领地交互地图"></div>
+ </div>
+ <div class="map-frame" id="mapFrame">
+ <div id="ending" role="status"></div>
  <div class="compass" aria-hidden="true"><b>N</b><svg viewBox="0 0 34 43"><path d="m17 1 8 23-8-5-8 5Z" fill="#59716c"/><path d="m17 40-8-16 8-5 8 5Z" fill="#fafbf2" stroke="#59716c" stroke-width="1"/><path d="M17 1v18l8 5Z" fill="#8daca0"/></svg></div>
- <span class="map-tip"><svg class="ui-icon" aria-hidden="true"><use href="#ui-pointer"/></svg>点击地块查看详情</span>
+ <span class="build-count"><i></i><span id="built"></span></span>
  <div class="map-tools" aria-label="地图视角"><button id="zoomOut" title="缩小" aria-label="缩小"><svg class="ui-icon" aria-hidden="true"><use href="#ui-minus"/></svg></button><button id="zoomIn" title="放大" aria-label="放大"><svg class="ui-icon" aria-hidden="true"><use href="#ui-plus"/></svg></button><button id="rotateMap" title="旋转地图" aria-label="旋转地图"><svg class="ui-icon" aria-hidden="true"><use href="#ui-rotate"/></svg></button><button id="resetMap" title="还原视角" aria-label="还原视角"><svg class="ui-icon" aria-hidden="true"><use href="#ui-fit"/></svg></button></div>
  </div>
- <div class="tile-info"><span id="tileIcon" class="tile-icon"></span><div class="tile-copy"><div class="tile-heading"><h3 id="tileTitle"></h3><span id="tileType" class="tile-type"></span></div><p id="tileDesc"></p></div><button id="buildButton" class="soft-button" hidden></button><label class="tile-picker" title="选择地块"><svg class="ui-icon" aria-hidden="true"><use href="#ui-list"/></svg><select id="tileSelect" aria-label="选择地块"></select></label></div>
- </section>
- <section class="council-invite"><span class="scroll-art"><svg class="art-icon" aria-hidden="true"><use href="#ico-scroll"/></svg></span><div><h2>居民议事厅</h2><p>听取居民提案，为本季争取粮食、木材或资金。</p></div><button id="visitCouncil" class="council-link">进入议事厅 <svg class="ui-icon" aria-hidden="true"><use href="#ui-chevron"/></svg></button></section>
-</div>
-<aside class="control-column">
+ <section class="panel tile-info" aria-label="地块详情"><span id="tileIcon" class="tile-icon"></span><div class="tile-copy"><div class="tile-heading"><h3 id="tileTitle"></h3><span id="tileType" class="tile-type"></span></div><p id="tileDesc"></p></div><button id="buildButton" class="soft-button" hidden></button><label class="tile-picker" title="选择地块"><svg class="ui-icon" aria-hidden="true"><use href="#ui-list"/></svg><select id="tileSelect" aria-label="选择地块"></select></label></section>
+<aside class="control-column" aria-label="聚落经营">
+ <div class="control-content" id="controlContent">
  <section class="panel staffing"><header class="panel-title"><h2><span class="title-icon"><svg class="ui-icon" aria-hidden="true"><use href="#ui-workers"/></svg></span>劳力分配</h2><span class="free-chip" id="free"></span></header><div id="workers" class="worker-list"></div></section>
  <section class="panel forecast"><header class="panel-title"><h2><span class="title-icon"><svg class="ui-icon" aria-hidden="true"><use href="#ui-chart"/></svg></span>本季收支</h2><span class="forecast-badge">预估</span></header>
- <div class="forecast-body"><div id="pills" class="pills" aria-live="polite"></div><p id="plan"></p><p id="oblig"></p><button id="withdraw" class="text-btn" hidden>撤回已采纳议案</button>
- <details id="ledger"><summary>查看收支明细 <svg class="ui-icon" aria-hidden="true"><use href="#ui-down"/></svg></summary><ul id="events"></ul></details><div id="forecastMsg" class="status" role="status"></div>
- <button id="advance" class="primary advance"><span>结束本季</span><svg class="ui-icon" aria-hidden="true"><use href="#ui-arrow"/></svg></button></div></section>
+ <div class="forecast-body"><div id="pills" class="pills" aria-live="polite"></div><p id="plan"></p><p id="oblig"></p><p id="tradeOutlook" aria-live="polite"></p><button id="withdraw" class="text-btn" hidden>撤回已采纳议案</button>
+ <details id="ledger"><summary>查看收支明细 <svg class="ui-icon" aria-hidden="true"><use href="#ui-down"/></svg></summary><ul id="events"></ul></details>
+ </div></section>
  <section class="panel goals" aria-labelledby="goals-title"><header><h2 id="goals-title"><svg class="ui-icon" aria-hidden="true"><use href="#ui-flag"/></svg>建镇目标</h2><span>第 8 季结束时</span></header>
  <ul><li>新设施 ≥ 3</li><li>存粮 ≥ 8</li><li>民望 ≥ 4</li></ul></section>
+ </div>
+ <footer class="panel turn-dock">
+  <div id="forecastMsg" class="status" role="status"></div>
+  <div class="turn-actions">
+   <button id="toggleControls" class="soft-button" aria-expanded="false" aria-controls="controlContent"><svg class="ui-icon" aria-hidden="true"><use href="#ui-chart"/></svg><span>经营面板</span><svg class="ui-icon dock-chevron" aria-hidden="true"><use href="#ui-down"/></svg></button>
+   <button id="advance" class="primary advance"><span>结束本季</span><svg class="ui-icon" aria-hidden="true"><use href="#ui-arrow"/></svg></button>
+  </div>
+ </footer>
 </aside>
-</div></div></main>
+</div></main>
 <dialog id="councilDialog"><div class="dialog-head"><h2><svg class="ui-icon" aria-hidden="true"><use href="#ui-council"/></svg>居民议事厅</h2><button type="button" class="icon-button close-dialog" data-close="councilDialog" aria-label="关闭议事厅"><svg class="ui-icon" aria-hidden="true"><use href="#ui-close"/></svg></button></div><div class="dialog-body"><label for="intent">本季经营打算 <small>选填</small></label><textarea id="intent" rows="3" maxlength="300" placeholder="想在苇湾建货栈，能否先赊木，下季还粮？"></textarea>
 <div class="ask-row"><select id="mode" aria-label="议案来源"><option value="local">本地规则代表</option><option value="model">大模型代表</option></select><button id="ask" class="primary">听取议案</button></div>
 <div class="model-connection"><small id="modelHint"></small><button type="button" class="soft-button" id="configFromCouncil"><svg class="ui-icon" aria-hidden="true"><use href="#ui-settings"/></svg>配置大模型</button></div><p id="councilStatus" role="status"></p>
 <div class="proposal" id="proposal" hidden><small id="speaker"></small><h3 id="offerTitle"></h3><p id="offerReason"></p><p id="terms"></p><p id="councilBasis"></p><button class="soft-button" id="accept">采纳本季议案</button></div></div></dialog>
 <dialog id="journal"><div class="dialog-head"><h2><svg class="ui-icon" aria-hidden="true"><use href="#ui-book"/></svg>城镇纪事</h2><button type="button" class="icon-button close-dialog" data-close="journal" aria-label="关闭纪事"><svg class="ui-icon" aria-hidden="true"><use href="#ui-close"/></svg></button></div><div class="dialog-body" id="journalContent"></div></dialog>
-<dialog id="helpDialog"><div class="dialog-head"><h2><svg class="ui-icon" aria-hidden="true"><use href="#ui-help"/></svg>玩法说明</h2><button type="button" class="icon-button close-dialog" data-close="helpDialog" aria-label="关闭说明"><svg class="ui-icon" aria-hidden="true"><use href="#ui-close"/></svg></button></div><div class="dialog-body guide"><h3>八季建镇</h3><p id="goal"></p><h3>安排这一季</h3><p>点选地块安排一处建设，使用加减按钮分配居民。人手已满时，先从一个行业减员，再调入另一行业。</p><h3>向居民议会借力</h3><p>开工资源不足时，可以到议事厅听取提案。核对条款后采纳，下季要为到期契约留足库存。</p><h3>结算顺序</h3><p>先取得议案资源，再付建设费。新设施当季投产，随后扣除居民口粮，最后清偿契约。确认结束本季前，可以反复修改计划。</p></div></dialog>
+<dialog id="helpDialog"><div class="dialog-head"><h2><svg class="ui-icon" aria-hidden="true"><use href="#ui-help"/></svg>玩法说明</h2><button type="button" class="icon-button close-dialog" data-close="helpDialog" aria-label="关闭说明"><svg class="ui-icon" aria-hidden="true"><use href="#ui-close"/></svg></button></div><div class="dialog-body guide">
+ <h3>八季建镇</h3><p id="goal"></p>
+ <h3 id="trustHeading" tabindex="-1">民望与贸易</h3><p id="trustCurrent"></p><p id="trustRule"></p>
+ <h3>安排这一季</h3><p>点选地块安排一处建设，使用加减按钮分配居民。人手已满时，先从一个行业减员，再调入另一行业。</p>
+ <h3>向居民议会借力</h3><p>开工资源不足时，可以到议事厅听取提案。核对条款后采纳，下季要为到期契约留足库存。</p>
+ <h3>结算顺序</h3><p>先取得议案资源，再付建设费。新设施当季投产，随后扣除居民口粮，最后清偿契约。确认结束本季前，可以反复修改计划。</p>
+</div></dialog>
 <dialog id="settingsDialog" aria-labelledby="settingsTitle">
  <div class="dialog-head"><h2 id="settingsTitle"><svg class="ui-icon" aria-hidden="true"><use href="#ui-settings"/></svg>游戏设置</h2><button type="button" class="icon-button close-dialog" data-close="settingsDialog" aria-label="关闭设置"><svg class="ui-icon" aria-hidden="true"><use href="#ui-close"/></svg></button></div>
  <div class="dialog-body">

@@ -485,7 +485,7 @@ function outline(color,width) {
   marker.visible=false;
   return marker;
 }
-export function createRiverMap(container,{onSelect=()=>{}}={}) {
+export function createRiverMap(container,{frame:viewport=container,onSelect=()=>{}}={}) {
   const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:"low-power"});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
   renderer.setClearColor(0,0);
@@ -493,7 +493,7 @@ export function createRiverMap(container,{onSelect=()=>{}}={}) {
   renderer.shadowMap.type=THREE.PCFShadowMap;
   renderer.shadowMap.autoUpdate=false;
   const canvas=renderer.domElement;
-  canvas.style.cssText="display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab;";
+  canvas.style.cssText="display:block;width:100%;height:100%;cursor:grab;";
   canvas.setAttribute("aria-label","河湾聚落三维地图，点击地块查看，横向拖动旋转");
   container.appendChild(canvas);
 
@@ -523,8 +523,7 @@ export function createRiverMap(container,{onSelect=()=>{}}={}) {
   label.style.cssText="position:absolute;z-index:3;pointer-events:none;display:none;white-space:nowrap;padding:4px 10px;border-radius:5px;background:#243d36ed;color:#fff8df;box-shadow:0 2px 5px #32443826;font:600 12px/1.5 system-ui,sans-serif;letter-spacing:.04em";
   container.appendChild(label);
   const oldPosition=container.style.position;
-  const compassHost=container.parentElement;
-  const oldNorth=compassHost?.style.getPropertyValue("--north-angle");
+  const oldNorth=viewport.style.getPropertyValue("--north-angle");
   if(getComputedStyle(container).position==="static")container.style.position="relative";
   const raycaster=new THREE.Raycaster(), mouse=new THREE.Vector2();
   let angle=START_ANGLE, zoom=1, width=1,height=1, selectedId=null,plannedId=null,hoverId=null;
@@ -541,7 +540,7 @@ export function createRiverMap(container,{onSelect=()=>{}}={}) {
     // CSS rotations are clockwise from up. The view matrix supplies the actual
     // right/up components, including the foreshortening from the camera pitch.
     scratch.set(0,0,-1).transformDirection(camera.matrixWorldInverse);
-    compassHost?.style.setProperty("--north-angle",Math.atan2(scratch.x,scratch.y)+"rad");
+    viewport.style.setProperty("--north-angle",Math.atan2(scratch.x,scratch.y)+"rad");
     const bounds=new THREE.Box2();
     for(const {mesh,tile} of pieces.values()) {
       const high=grassHeight(tile)+(tile.kind==="hill"?.76:.50);
@@ -553,10 +552,21 @@ export function createRiverMap(container,{onSelect=()=>{}}={}) {
     const empty=bounds.isEmpty();
     const halfWidth=empty?5.4:(bounds.max.x-bounds.min.x)*.54+.1;
     const halfHeight=empty?3.7:(bounds.max.y-bounds.min.y)*.54+.08;
+    const midX=empty?0:(bounds.max.x+bounds.min.x)/2;
     const midY=empty?0:(bounds.max.y+bounds.min.y)/2;
-    const aspect=width/height, extent=Math.max(halfHeight,halfWidth/aspect)/zoom;
-    camera.left=-extent*aspect;camera.right=extent*aspect;
-    camera.top=midY+extent;camera.bottom=midY-extent;
+    // Keep the full canvas interactive while fitting the board between the floating panels.
+    const canvasRect=container.getBoundingClientRect();
+    const fitRect=viewport.getBoundingClientRect();
+    const fitX=fitRect.left-canvasRect.left+fitRect.width/2;
+    const fitY=fitRect.top-canvasRect.top+fitRect.height/2;
+    const unitsPerPixel=2*Math.max(
+      halfWidth/Math.max(1,fitRect.width),
+      halfHeight/Math.max(1,fitRect.height),
+    )/zoom;
+    camera.left=midX-fitX*unitsPerPixel;
+    camera.right=camera.left+width*unitsPerPixel;
+    camera.top=midY+fitY*unitsPerPixel;
+    camera.bottom=camera.top-height*unitsPerPixel;
     camera.updateProjectionMatrix();render();
   }
   function resize() {
@@ -629,7 +639,9 @@ export function createRiverMap(container,{onSelect=()=>{}}={}) {
     lostpointercapture:release,pointerleave:clearHover,wheel};
   for(const [name,handler] of Object.entries(handlers))canvas.addEventListener(name,handler,{passive:name!=="wheel"});
   const observer=new ResizeObserver(resize);
-  observer.observe(container);resize();
+  observer.observe(container);
+  if(viewport!==container)observer.observe(viewport);
+  resize();
   return {
     update(tiles,{season="初春",selectedId:selection=selectedId,plannedId:plan=null}={}) {
       selectedId=selection;plannedId=plan;
@@ -668,8 +680,8 @@ export function createRiverMap(container,{onSelect=()=>{}}={}) {
       for(const {mesh} of pieces.values())mesh.geometry.dispose();
       for(const o of [floor,hoverRing,selectRing,planRing]) {o.geometry.dispose();o.material.dispose();}
       mat.dispose();sun.shadow.dispose();renderer.dispose();label.remove();canvas.remove();
-      if(oldNorth)compassHost?.style.setProperty("--north-angle",oldNorth);
-      else compassHost?.style.removeProperty("--north-angle");
+      if(oldNorth)viewport.style.setProperty("--north-angle",oldNorth);
+      else viewport.style.removeProperty("--north-angle");
       container.style.position=oldPosition;
     },
   };

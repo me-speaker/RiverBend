@@ -1,5 +1,5 @@
 import {
-  advanceGame, createGame, forecastPlan, getGame, prepareCouncil, recommendLocal, recordOffer, SAVE_KEY,
+  advanceGame, createGame, forecastPlan, getGame, prepareCouncil, recommendLocal, recordOffer, SAVE_KEY, TRADE_TRUST,
 } from "./game-engine.js";
 import { readModelSettings, recommendModel, saveModelSettings, testModelSettings } from "./browser-model.js";
 
@@ -98,7 +98,6 @@ function loadGame(data, newRun = false) {
     const ending = el("ending");
     ending.tabIndex = -1;
     ending.focus({ preventScroll: true });
-    ending.scrollIntoView({ block: "start" });
   }
 }
 const mapDefs =
@@ -146,17 +145,17 @@ function landDetail(t) {
 }
 
 // The original illustrated board doubles as a playable map when WebGL is unavailable.
-function createFlatMap(container, { onSelect }) {
+function createFlatMap(frame, { onSelect }) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("viewBox", "-250 -175 500 350");
   svg.setAttribute("aria-label", "河湾地块图");
-  svg.style.cssText = "display:block;width:100%;height:100%;";
-  container.replaceChildren(svg);
+  svg.style.cssText = "position:absolute;inset:0;width:100%;height:100%;overflow:visible;";
+  frame.prepend(svg);
   let tiles = [], activeId, plannedId, scale = 1, rotation = 0;
   const colors = { town: "#dacc98", farm: "#cbd890", wood: "#98bf89", trade: "#dfd49e", river: "#80c2c1", hill: "#afc69c" };
   const points = "0,-38 45,-19 45,19 0,38 -45,19 -45,-19";
   function paint() {
-    container.parentElement.style.setProperty("--north-angle", Math.atan2(Math.sin(rotation), .7313 * Math.cos(rotation)) + "rad");
+    frame.style.setProperty("--north-angle", Math.atan2(Math.sin(rotation), .7313 * Math.cos(rotation)) + "rad");
     const sites = tiles.map(tile => {
       const x = 90 * (tile.q + tile.r / 2), y = 90 * Math.sqrt(3) / 2 * tile.r;
       return { tile, x: x * Math.cos(rotation) - y * Math.sin(rotation),
@@ -165,7 +164,7 @@ function createFlatMap(container, { onSelect }) {
     const fields = sites.map(({ tile, x, y }) => {
       const focus = tile.id === activeId, plan = tile.id === plannedId;
       const edge = plan ? "#b56b2d" : focus ? "#faf2ab" : "#8aab85";
-      return `<g transform="translate(${x},${y})" role="button" tabindex="0" aria-pressed="${focus}" data-tile="${escapeHtml(tile.id)}" aria-label="${escapeHtml(tile.name)}" style="cursor:pointer">
+      return `<g transform="translate(${x},${y})" role="button" tabindex="0" aria-pressed="${focus}" data-tile="${escapeHtml(tile.id)}" aria-label="${escapeHtml(tile.name)}" style="cursor:pointer;pointer-events:auto">
         <title>${escapeHtml(tile.name + " · " + tile.detail)}</title>
         <polygon points="${points}" transform="translate(0,7)" fill="${tile.kind === "river" ? "#69a9a5" : "#a79a70"}"/>
         <polygon points="${points}" fill="${colors[tile.kind]}" stroke="${edge}" stroke-width="${focus || plan ? 3 : 1}"/>
@@ -215,7 +214,7 @@ receipt.className = "season-receipt";
 receipt.hidden = true;
 receipt.setAttribute("role", "status");
 receipt.setAttribute("aria-atomic", "true");
-el("advance").before(receipt);
+el("forecastMsg").after(receipt);
 let receiptTimer;
 
 function drawMap() {
@@ -227,6 +226,11 @@ function selectTile(id) {
   map?.select(id);
   renderTile();
   renderControls();
+}
+function tradeTrustEffect(bonus) {
+  if (bonus > 0) return "经商每人多赚 1 币";
+  if (bonus < 0) return "经商每人少赚 1 币";
+  return "贸易收入按正常水平结算";
 }
 function renderState() {
   document.body.dataset.season = seasons[(state.turn - 1) % 4];
@@ -241,9 +245,14 @@ function renderState() {
   }
   renderModelMode();
   show("oblig", state.obligations.map(o => "待履约 · " + o.terms).join("　"));
-  el("resources").innerHTML = ["food", "wood", "coin", "population", "trust"].map(key =>
+  el("resources").innerHTML = ["food", "wood", "coin", "population"].map(key =>
     `<div class="stat ${key}"><span class="stat-icon">${icon(key)}</span><div><small>${label[key]}</small>
-    <b>${key === "population" ? state.population : state.resources[key]}</b></div></div>`).join("");
+    <b>${key === "population" ? state.population : state.resources[key]}</b></div></div>`).join("") +
+    `<button type="button" class="stat trust" id="trustInfo" aria-haspopup="dialog" aria-label="民望 ${state.resources.trust}，查看效果">
+      <span class="stat-icon">${icon("trust")}</span><span><small>民望</small><b>${state.resources.trust}</b></span>
+    </button>`;
+  show("trustCurrent", `当前民望 ${state.resources.trust}，${tradeTrustEffect(state.trade_trust_bonus)}。`);
+  show("trustRule", `季初民望达到 ${TRADE_TRUST.bonusAt}，经商每人多赚 1 币。季初民望降到 ${TRADE_TRUST.penaltyAt} 或以下，经商每人少赚 1 币。本季履约或开仓设粥带来的民望变化，从下季起影响贸易。`);
   el("ending").innerHTML = playing() ? "" :
     `<h2>${state.status === "won" ? "河湾建镇成功" : "本局经营结束"}</h2><p>${escapeHtml(state.result)}</p>
     <div class="ending-actions"><button type="button" class="soft-button" data-ending="journal">查看纪事</button>
@@ -262,8 +271,12 @@ function drawWorkers() {
   const planned = state.tiles.find(t => t.id === build);
   el("workers").innerHTML = Object.entries(jobs).map(([job, [name, resource]]) => {
     const rate = state.rates[job] + Number(planned?.kind === job);
+    const trustBonus = job === "trade" ? state.trade_trust_bonus : 0;
+    const trustNote = trustBonus
+      ? `<small class="trust-effect ${trustBonus > 0 ? "pos" : "neg"}">含民望 ${trustBonus > 0 ? "+1" : "−1"}</small>`
+      : "";
     return `<div class="worker"><span class="work-icon ${resource}">${icon(resource)}</span>
-      <span class="work-name"><b>${name}</b><small>每人产 ${rate} ${units[resource]}</small></span>
+      <span class="work-name"><b>${name}</b><small>每人产 ${rate} ${units[resource]}</small>${trustNote}</span>
       <div class="stepper"><button data-job="${job}" data-change="-1" aria-label="减少${name}人手">−</button>
       <output>${workers[job]}</output><button data-job="${job}" data-change="1" aria-label="增加${name}人手">+</button></div></div>`;
   }).join("");
@@ -314,6 +327,7 @@ function clearForecast() {
   councilPreview.textContent = "";
   el("pills").replaceChildren();
   show("forecastMsg", "");
+  show("tradeOutlook", "");
   list("events", []);
   el("ledger").hidden = true;
   renderControls();
@@ -325,6 +339,10 @@ function refreshForecast() {
     forecastReady = true;
     forecast = result;
     show("forecastMsg", result.status === "playing" ? "" : result.result);
+    const nextBonus = result.next_trade_trust_bonus;
+    if (nextBonus !== null && nextBonus !== state.trade_trust_bonus) {
+      show("tradeOutlook", `预计下季民望 ${result.resources.trust}，${tradeTrustEffect(nextBonus)}。`);
+    }
     el("forecastMsg").className = "status";
     el("pills").innerHTML = Object.keys(state.resources).map(key => {
       const delta = result.delta[key];
@@ -442,6 +460,11 @@ function showSettlement(data) {
     "上季存粮 " + state.resources.food;
   receipt.hidden = false;
   receipt.replaceChildren(season, outcome);
+  if (state.trade_trust_bonus !== previous.trade_trust_bonus) {
+    const trade = document.createElement("small");
+    trade.textContent = `民望 ${state.resources.trust} · ${tradeTrustEffect(state.trade_trust_bonus)}`;
+    receipt.append(trade);
+  }
   receiptTimer = setTimeout(() => { receipt.hidden = true; }, 6000);
 }
 el("advance").onclick = event => {
@@ -624,11 +647,16 @@ function openPanel(id, navId) {
 }
 el("overviewButton").onclick = () => {
   document.querySelector("dialog[open]")?.close();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  map?.resetView();
 };
-el("councilButton").onclick = el("visitCouncil").onclick = () => openPanel("councilDialog", "councilButton");
+el("councilButton").onclick = () => openPanel("councilDialog", "councilButton");
 el("historyButton").onclick = () => openPanel("journal", "historyButton");
 el("helpButton").onclick = () => openPanel("helpDialog", "overviewButton");
+el("resources").addEventListener("click", event => {
+  if (!event.target.closest("#trustInfo")) return;
+  openPanel("helpDialog", "overviewButton");
+  el("trustHeading").focus();
+});
 el("settingsButton").onclick = el("configFromCouncil").onclick = openModelSettings;
 for (const button of document.querySelectorAll("[data-close], #closeHistory")) {
   button.onclick = () => button.closest("dialog")?.close();
@@ -667,22 +695,33 @@ el("zoomIn").onclick = () => map?.zoomBy(1.15);
 el("zoomOut").onclick = () => map?.zoomBy(1 / 1.15);
 el("rotateMap").onclick = () => map?.rotateBy(Math.PI / 3);
 el("resetMap").onclick = () => map?.resetView();
+const compactHud = window.matchMedia("(max-width: 760px)");
+const toggleControls = el("toggleControls");
+function setControlsExpanded(expanded) {
+  if (!expanded && el("controlContent").contains(document.activeElement)) toggleControls.focus();
+  toggleControls.setAttribute("aria-expanded", String(expanded));
+}
+setControlsExpanded(!compactHud.matches);
+compactHud.addEventListener("change", event => setControlsExpanded(!event.matches));
+toggleControls.onclick = () => setControlsExpanded(toggleControls.getAttribute("aria-expanded") !== "true");
+
 async function initMap() {
   const host = el("map");
+  const frame = el("mapFrame");
   try {
     const { createRiverMap } = await import("./river-map.js");
-    map = createRiverMap(host, { onSelect: selectTile });
+    map = createRiverMap(host, { frame, onSelect: selectTile });
     drawMap();
     host.addEventListener("webglcontextlost", event => {
       event.preventDefault();
       map.dispose();
-      map = createFlatMap(host, { onSelect: selectTile });
+      map = createFlatMap(frame, { onSelect: selectTile });
       drawMap();
     }, { capture: true, once: true });
   } catch (error) {
     console.warn("切换到二维地图", error);
     map?.dispose();
-    map = createFlatMap(host, { onSelect: selectTile });
+    map = createFlatMap(frame, { onSelect: selectTile });
     drawMap();
   }
 }

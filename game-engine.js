@@ -6,6 +6,7 @@ const SEASONS = [
 ];
 const GOAL = "第 8 季结算后，拥有至少 3 处新设施、8 粮食和 4 民望。断粮或民望归零即告失败。";
 const RESOURCES = { food: "粮食", wood: "木材", coin: "钱币", trust: "民望" };
+export const TRADE_TRUST = Object.freeze({ bonusAt: 5, penaltyAt: 2 });
 const JOBS = ["farm", "wood", "trade"];
 const IMPROVEMENTS = {
   farm: ["灌渠", { wood: 5, coin: 3 }, "每名农户每季多产 1 粮。"],
@@ -111,13 +112,20 @@ function tilesFor(state) {
   });
 }
 
-function currentYield(state) {
+function tradeTrustBonus(trust) {
+  if (trust >= TRADE_TRUST.bonusAt) return 1;
+  if (trust <= TRADE_TRUST.penaltyAt) return -1;
+  return 0;
+}
+
+function currentYield(state, openingTrust = state.resources.trust) {
   const [season, weather, farmRate] = SEASONS[state.turn - 1];
-  const rates = { farm: farmRate, wood: 2, trade: 2 };
+  const trade_trust_bonus = tradeTrustBonus(openingTrust);
+  const rates = { farm: farmRate, wood: 2, trade: 2 + trade_trust_bonus };
   for (const [id, , , , kind] of SITES) {
     if (state.built_ids.includes(id)) rates[kind]++;
   }
-  return { season, weather, rates, consumption: state.population * 2 + Number(season === "严冬") };
+  return { season, weather, rates, trade_trust_bonus, consumption: state.population * 2 + Number(season === "严冬") };
 }
 
 function publicState(save) {
@@ -163,11 +171,16 @@ function settle(state, { workers, build, offer }) {
     events.push(`在${tile.name}建成${name}，支出${describe(cost)}，本季投产。`);
   }
 
-  const { rates, consumption } = currentYield(updated);
+  const { rates, consumption, trade_trust_bonus } = currentYield(updated, state.resources.trust);
   const production = { food: workers.farm * rates.farm, wood: workers.wood * rates.wood, coin: workers.trade * rates.trade };
   for (const [key, amount] of Object.entries(production)) resources[key] += amount;
   resources.food -= consumption;
   events.push(`产出${describe(production)}；口粮消耗 ${consumption}。`);
+  const trustIncome = workers.trade * trade_trust_bonus;
+  if (trustIncome !== 0) {
+    const sign = trustIncome > 0 ? "+" : "−";
+    events.push(`贸易产出已计入民望影响 ${sign}${Math.abs(trustIncome)} 钱币。`);
+  }
   for (const debt of debts) {
     if (affordable(resources, debt.cost)) {
       for (const [key, amount] of Object.entries(debt.cost)) resources[key] -= amount;
@@ -202,7 +215,8 @@ function forecast(state, draft) {
   const { updated, events } = settle(state, draft);
   const { resources, population, status, result } = updated;
   const delta = Object.fromEntries(Object.keys(RESOURCES).map(key => [key, resources[key] - state.resources[key]]));
-  return { resources, delta, events, population, built: updated.built_ids.length, status, result };
+  const next_trade_trust_bonus = status === "playing" ? tradeTrustBonus(resources.trust) : null;
+  return { resources, delta, events, population, built: updated.built_ids.length, status, result, next_trade_trust_bonus };
 }
 
 export const SAVE_KEY = "river-council-save";
@@ -340,8 +354,8 @@ export function prepareCouncil(draft) {
   for (const option of [null, ...councilOptions(save.state)]) {
     let outcome;
     try {
-      const { resources, delta, status } = forecast(save.state, { ...draft, offer: option?.id ?? null });
-      outcome = { resources, delta, status };
+      const { resources, delta, status, next_trade_trust_bonus } = forecast(save.state, { ...draft, offer: option?.id ?? null });
+      outcome = { resources, delta, status, next_trade_trust_bonus };
     } catch (error) {
       if (!(error instanceof GameError)) throw error;
       continue;
@@ -367,7 +381,7 @@ export function recordOffer(draft, reply) {
 
 const INTERESTS = {
   food: ["粮", "口粮", "饥", "食物", "吃饭"], wood: ["木", "建造", "扩建", "建设"],
-  coin: ["钱", "贸易", "金币", "商路"], trust: ["民心", "信誉", "信任", "声望"],
+  coin: ["钱", "贸易", "金币", "商路"], trust: ["民望", "民心", "信誉", "信任", "声望"],
 };
 
 export function recommendLocal(city, options, intent, build) {
@@ -386,6 +400,7 @@ export function recommendLocal(city, options, intent, build) {
   if (intent.includes("赊木") || /粮.{0,4}换.{0,4}(木|杉)/u.test(intent)) preferred.add("timber_credit");
   if (intent.includes("借粮") || /(钱|币).{0,4}换.{0,4}粮/u.test(intent)) preferred.add("grain_loan");
   if (intent.includes("预售木") || /木.{0,4}换.{0,4}(钱|币)/u.test(intent)) preferred.add("market_delivery");
+  if (/开仓设粥|(?:提高|提升|增加|恢复|挽回).{0,2}(民望|民心|声望|信誉)/u.test(intent)) preferred.add("public_meal");
 
   function score(option) {
     const gain = Object.entries(option.now).reduce((sum, [key, amount]) => sum + weights[key] * amount, 0);
@@ -400,6 +415,7 @@ export function recommendLocal(city, options, intent, build) {
   const [priority] = Object.keys(best.now).filter(key => best.now[key] > 0).sort((left, right) =>
     weights[right] * best.now[right] - weights[left] * best.now[left]);
   let reason = priority ? `按本季安排，议会优先补充${RESOURCES[priority]}。` : "议会按本季库存和居民需求选择了这份提案。";
+  if (best.id === "public_meal") reason = "居民愿意开仓设粥，用存粮换取民望。";
   if (Object.keys(best.next_cost).length) reason += `下季需留出 ${describe(best.next_cost)} 履约。`;
   return { offer: best, reason, source: "local" };
 }

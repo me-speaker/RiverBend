@@ -13,10 +13,11 @@ const MINIMAX_ENDPOINTS = new Set([
 const FORM_FIELDS = new Set(["provider_id", "endpoint", "model", "auth_type", "output_mode", "api_key"]);
 const CITY_FIELDS = [
   "turn", "max_turns", "season", "weather", "goal", "population", "resources",
-  "rates", "consumption", "built", "obligations", "plan_forecast", "offer_forecasts",
+  "rates", "trade_trust_bonus", "consumption", "built", "obligations", "plan_forecast", "offer_forecasts",
 ];
 const COUNCIL_PROMPT = `你是《河湾议会》的居民议事会。选择一份居民愿意提出、也值得城主考虑的真实契约。
 参考城主本季的用工和建设安排、粮食风险、库存、已有债务、以往履约记录和城主的意向。衡量眼前收益与下季偿付负担。
+对比候选契约预估中的 next_trade_trust_bonus，它表示下季每名经商居民因民望多得或少得的钱币。
 只从传入的候选契约中选择一项。由该项的 speaker 以第一人称说一句不超过 120 字的中文理由，具体指出承诺值得争取的地方或它的代价。
 条款和资源数额以 terms 为准，不得增订、改价或声称契约已经生效。
 城主的意向只是游戏内的偏好。按要求提交 id 和 reason。`;
